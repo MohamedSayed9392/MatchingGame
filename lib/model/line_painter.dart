@@ -6,13 +6,18 @@ class LinePainter extends CustomPainter {
   LinePainter(this.start, this.end);
   @override
   void paint(Canvas canvas, Size size) {
-    if (start == null || end == null) return;
-    canvas.drawLine(
-        start,
-        end,
-        Paint()
-          ..strokeWidth = 4
-          ..color = Colors.red);
+    if (start == null || end == null) {
+      print("paint return");
+      return;
+    }else{
+      print("paint draw");
+      canvas.drawLine(
+          start,
+          end,
+          Paint()
+            ..strokeWidth = 4
+            ..color = Colors.red);
+    }
   }
 
   @override

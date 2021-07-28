@@ -39,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   GlobalKey key3 = GlobalKey();
   GlobalKey key4 = GlobalKey();
   GlobalKey key5 = GlobalKey();
+
   @override
   void initState() {
     initList();
@@ -58,6 +59,16 @@ class _MyHomePageState extends State<MyHomePage> {
     itemList.shuffle();
   }
 
+  List<Offset> startPoints = [];
+  List<Offset> endPoints = [];
+  List<Widget> customPainters = [];
+  List<String> answers = [];
+
+  var appBarSize;
+  var draggedItems = [];
+
+  var screenWidth = 300.0;
+  var screenHeight = 400.0;
   @override
   Widget build(BuildContext context) {
     GestureDetector gestureDetector = GestureDetector(
@@ -80,107 +91,153 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: [IconButton(
+          icon: Icon(Icons.undo),
+          onPressed: (){
+            if(customPainters.isNotEmpty){
+              setState((){
+                customPainters.removeLast();
+                answers.removeLast();
+                startPoints.removeLast();
+                endPoints.removeLast();
+                draggedItems.removeLast();
+              });
+            }
+          },
+        ),],
       ),
       body: Builder(builder: (context) {
-        var appBarSize = Scaffold.of(context).appBarMaxHeight;
-        return Center(
-          child: Stack(children: [
-            IgnorePointer(
-              child: gestureDetector,
-            ),
-            Row(
-              children: [
-                Column(
-                  children: itemList
-                      .map(
-                        (e) => Listener(
-                          onPointerMove: (event) {
-                            gestureDetector.onPanUpdate(DragUpdateDetails(
-                                delta: Offset.zero,
-                                globalPosition: event.position,
-                                localPosition: Offset(event.position.dx,
-                                    event.position.dy - appBarSize)));
-                          },
-                          child: Draggable<ItemModel>(
-                            onDragEnd: (e) {
-                              setState(() {
-                                start = Offset.zero;
-                                end = Offset.zero;
-                              });
+        appBarSize = Scaffold.of(context).appBarMaxHeight;
+        return Container(
+          width:screenWidth,
+          height:screenHeight,
+          child: Center(
+            child: Stack(children: [
+              IgnorePointer(
+                child: gestureDetector,
+              ),
+              Row(
+                children: [
+                  Column(
+                    children: itemList
+                        .map(
+                          (e) => Listener(
+                            onPointerMove: (event) {
+                              if(!draggedItems.contains(itemList.indexOf(e))) {
+                                var item = DragUpdateDetails(
+                                    delta: Offset.zero,
+                                    globalPosition: event.position,
+                                    localPosition: Offset(event.position.dx,
+                                        event.position.dy - appBarSize));
+
+                                gestureDetector.onPanUpdate(item);
+                              }
                             },
-                            onDragStarted: () {
-                              RenderBox render =
-                                  e.key.currentContext.findRenderObject();
-                              Offset centerWidget = Offset(
-                                  render.size.width / 2,
-                                  render.size.height / 2 - appBarSize);
-                              gestureDetector.onPanStart(
-                                DragStartDetails(
-                                  localPosition: render.localToGlobal(
-                                    centerWidget,
+                            child: Draggable<ItemModel>(
+                              onDragEnd: (draggableDetails) {
+                                print("accepted : ${draggableDetails.wasAccepted}");
+
+                                if(draggableDetails.wasAccepted) {
+                                  startPoints.add(start);
+                                  endPoints.add(end);
+
+                                  customPainters.add(IgnorePointer(
+                                      child: CustomPaint(
+                                        size: Size.infinite,
+                                        painter: LinePainter(
+                                            startPoints.last, endPoints.last),
+                                      )));
+
+                                  draggedItems.add(itemList.indexOf(e));
+                                }
+
+                                setState(() {
+                                  start = Offset.zero;
+                                  end = Offset.zero;
+                                });
+                              },
+                              onDragStarted: () {
+                                RenderBox render =
+                                    e.key.currentContext.findRenderObject();
+                                Offset centerWidget = Offset(
+                                    render.size.width / 2,
+                                    render.size.height / 2 - appBarSize);
+                                gestureDetector.onPanStart(
+                                  DragStartDetails(
+                                    localPosition: render.localToGlobal(
+                                      centerWidget,
+                                    ),
                                   ),
+                                );
+                              },
+                              data: e,
+                              child: Padding(
+                                key: e.key,
+                                padding: const EdgeInsets.all(20.0),
+                                child: Text(
+                                  e.name,
+                                  style: TextStyle(fontSize: 24),
                                 ),
-                              );
-                            },
-                            data: e,
-                            child: Padding(
-                              key: e.key,
-                              padding: const EdgeInsets.all(20.0),
-                              child: Text(
-                                e.name,
-                                style: TextStyle(fontSize: 24),
                               ),
-                            ),
-                            feedback: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Text(
-                                e.name,
-                                style: TextStyle(fontSize: 24),
+                              feedback: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Text(
+                                  e.name,
+                                  style: TextStyle(fontSize: 24),
+                                ),
                               ),
-                            ),
-                            childWhenDragging: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Text(
-                                e.name,
-                                style: TextStyle(fontSize: 24),
+                              childWhenDragging: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Text(
+                                  e.name,
+                                  style: TextStyle(fontSize: 24),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
-                Spacer(),
-                Column(
-                  children: itemList2
-                      .map(
-                        (e) => DragTarget<ItemModel>(
-                          onWillAccept: (data) => true,
-                          onAccept: (data) {
-                            if (data.name == e.name) {
-                              setState(() {
-                                itemList.remove(e);
-                                itemList2.remove(e);
-                              });
-                            }
-                          },
-                          builder: (context, onAccepted, onRejected) {
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Container(
-                                width: 100,
-                                height: 50,
-                                color: e.color,
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                      .toList(),
-                )
-              ],
-            ),
-          ]),
+                        )
+                        .toList(),
+                  ),
+                  Spacer(),
+                  Column(
+                    children: itemList2
+                        .map(
+                          (e) => DragTarget<ItemModel>(
+                            onWillAccept: (data) {
+                              print("data : $data");
+                              return true;
+                            },
+                            onAccept: (data) {
+                              if (data.name == e.name) {
+                                setState(() {
+                                  //itemList.remove(e);
+                                  //itemList2.remove(e);
+                                });
+                              }
+                              answers.add("${data.name}##${e.name}");
+                              print("answers : $answers");
+                            },
+                            builder: (context, onAccepted, onRejected) {
+                              return Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Container(
+                                  width: 100,
+                                  height: 50,
+                                  color: e.color,
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                        .toList(),
+                  )
+                ],
+              ),
+              Stack(
+                children: customPainters,
+              )
+            ]),
+          ),
         );
       }),
     );
